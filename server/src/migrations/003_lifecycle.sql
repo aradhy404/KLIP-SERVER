@@ -1,0 +1,3 @@
+ALTER TABLE entries
+  ADD COLUMN settled_at TIMESTAMPTZ,
+  ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
