@@ -3,9 +3,9 @@ import pool from "../config/db.js";
 
 
 const RULES = {
-    confirm: { who: "counterparty", from: ['pending'], to: ['confirmed'] },
-    despuite: { who: "conterparty", from: ['pending'], to: ['despuite'] },
-    settle: { who: "creator", from: ['pendind', 'confirmed', 'dipuite'], to: "settled" }
+    confirm: { who: "counterparty", from: ["pending"], to: "confirmed" },
+    dispute: { who: "counterparty", from: ["pending"], to: "dispute" },
+    settle: { who: "creator", from: ["pending", "confirmed", "dispute"], to: "settled" },
 }
 
 const createEntryService = async ({
@@ -130,24 +130,24 @@ const transitionEntry = async (entryId, actorId, action) => {
         const updatedResult = await client.query(`UPDATE entries SET status = $2, updated_at = now(), settled_at = CASE WHEN $3 THEN now() END WHERE id = $1 RETURNING  *`, [entryId, rule.to = "settled"])
         const updatedEntry = updatedResult.rows[0];
 
-        const eventAction = action === "dispute" ? "disputed": rule.to
+        const eventAction = action === "dispute" ? "disputed" : rule.to
 
-        await client.query(`INSERT INTO entry_events(entry_id,actor_id,action) VALUES ($1,$2,$3)`,[entryId,actorId,eventAction])
+        await client.query(`INSERT INTO entry_events(entry_id,actor_id,action) VALUES ($1,$2,$3)`, [entryId, actorId, eventAction])
 
         await client.query("COMMIT")
 
         return updatedEntry
 
-    }catch(error){
-        if(client){
-            try{
+    } catch (error) {
+        if (client) {
+            try {
                 await client.query("ROLLBACK")
-            }catch(rollbackError){
-                console.error("transtion rollback failed:",rollbackError)
+            } catch (rollbackError) {
+                console.error("transtion rollback failed:", rollbackError)
             }
         }
         throw error
-    }finally{
+    } finally {
         client?.release()
     }
 }
@@ -181,7 +181,7 @@ const listEntriesForUser = async (UserId, limit, offset) => {
 
 
 
-export { createEntryService, listEntriesForUser ,transitionEntry};
+export { createEntryService, listEntriesForUser, transitionEntry };
 
 
 
