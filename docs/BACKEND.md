@@ -1,7 +1,7 @@
 # Klip — Backend Design and Engineering Specification
 
-**Version:** 0.2
-**Status:** Auth and entry creation/listing implemented. Lifecycle endpoints in progress.
+**Version:** 1.0
+**Status:** v1.0 complete. Auth, entries, contacts, confirm, dispute and settle are implemented and were verified against PostgreSQL with a three-account test table.
 
 ## 1. Objectives
 
@@ -86,12 +86,14 @@ Migration files live in `server/src/migrations/` because `migrate.js` resolves `
 | description | TEXT | max 500 characters |
 | status | ENUM `pending`, `confirmed`, `dispute`, `settled` | default `pending` |
 | created_at | TIMESTAMPTZ | |
+| updated_at | TIMESTAMPTZ | set on every status change (migration 003) |
+| settled_at | TIMESTAMPTZ, nullable | filled when settled (migration 003) |
 
 Constraints: `no_self_entry` (creator cannot equal counterparty), `money_requires_amount`.
 Indexes: creator, counterparty, counterparty_phone.
 
 ### entry_events (append-only)
-`id BIGSERIAL, entry_id, actor_id, action, created_at`. A trigger blocks `UPDATE` and `DELETE`, so history cannot be rewritten.
+`id BIGSERIAL, entry_id, actor_id, action, created_at`. A trigger blocks `UPDATE` and `DELETE`, so history cannot be rewritten. A CHECK constraint limits `action` to `created`, `confirmed`, `disputed` and `settled` (migration 004, added as `NOT VALID` so it applies to new rows).
 
 ### entry_photos
 Exists, unused until post-MVP.
@@ -106,8 +108,7 @@ Exists, unused until post-MVP.
 
 Primary key `(owner_id, phone)`. One label per counterparty per owner.
 
-### Planned additions
-- `entries.settled_at TIMESTAMPTZ` and `entries.updated_at TIMESTAMPTZ`.
+### Planned for v1.1
 - A `cancelled` status. Entries are **not hard-deleted**, because `entry_events` references `entries(id)` and its trigger blocks deletes. Cancel instead.
 
 ## 6. Identity and Linking
@@ -147,27 +148,26 @@ Every status change inserts an `entry_events` row inside the same transaction as
 ```text
 POST /api/auth/register   { name, phone, password }
 POST /api/auth/login      { phone, password }
-POST /api/entry           { type, amount, description, counterpartyPhone }
+POST /api/entry           { type, amount, description, counterpartyPhone, counterpartyName }
 GET  /api/entry?limit=20&offset=0
+POST /api/entry/:id/confirm   counterparty, from pending
+POST /api/entry/:id/dispute   counterparty, from pending
+POST /api/entry/:id/settle    creator, from pending, confirmed or dispute
 ```
 
+- Lifecycle endpoints return 400 for a malformed id, 404 when the entry is not yours, 403 when you are on the entry but it is the other person's action, and 409 when the current status does not allow it. Each success writes an `entry_events` row in the same transaction.
 - `amount` is a string of whole rupees (e.g. `"500"`), converted to paise. Decimals are not accepted yet.
 - `GET /api/entry` returns `id, type, amount_paise, status, description, created_at, role, other_party`. `role` is `lender` or `borrower` from the caller's point of view. `other_party` is the contact name or the phone for the lender, and the lender's registered name for the borrower.
 
 ### Planned
 
 ```text
+GET   /api/dashboard            totals (v1.1; the client adds up the latest 100 entries today)
+PATCH /api/entry/:id            creator edits while pending or disputed
+POST  /api/entry/:id/cancel     creator cancels
+GET   /api/entry/:id            single entry
+GET   /api/entry/:id/events     history of an entry
 GET   /api/auth/me
-POST  /api/entry                (adds counterpartyName, upserts contact)
-GET   /api/entry/:id
-PATCH /api/entry/:id            creator, pending/dispute
-POST  /api/entry/:id/confirm    counterparty
-POST  /api/entry/:id/dispute    counterparty
-POST  /api/entry/:id/settle     creator
-POST  /api/entry/:id/cancel     creator
-GET   /api/entry/:id/events
-GET   /api/dashboard            totals
-GET   /api/people               entries grouped by counterparty with balances
 ```
 
 The earlier `/api/people` CRUD and `/api/obligations` routes are removed. People are derived from entries and contacts.
@@ -220,8 +220,8 @@ Browser → Vercel (client) → Render (API) → Neon (PostgreSQL)
 | JWT secret in env | Done |
 | Auth rate limiting | Done |
 | CORS allowlist | Done |
-| Secrets rotated after leak in git history | Done (JWT secret, DB password) |
-| Ownership checks on every entry route | In progress |
+| Secrets rotated after being shared in chat | Done (JWT secret, DB password); none were ever committed to git |
+| Ownership checks on every entry route | Done (verified with a three-account table) |
 | Zod validation | To do |
 | Phone verification (OTP) | To do (v1.1) |
 | Helmet security headers | To do |
@@ -242,10 +242,10 @@ Browser → Vercel (client) → Render (API) → Neon (PostgreSQL)
 | 2 | Database schema and migrations | Done |
 | 3 | Auth: register, login, JWT, rate limit | Done |
 | 4 | Entries: create and list | Done |
-| 5 | Contacts and `counterpartyName` | Next |
-| 6 | Confirm / dispute | To do |
-| 7 | Settle, edit, cancel, events | To do |
-| 8 | Dashboard and people endpoints | To do |
+| 5 | Contacts and `counterpartyName` | Done |
+| 6 | Confirm / dispute | Done |
+| 7 | Settle and events | Done (edit and cancel in v1.1) |
+| 8 | Dashboard and people endpoints | v1.1 |
 | 9 | Hardening: Zod, Helmet, tests | To do |
 | 10 | Docs, screenshots, resume-ready README | To do |
 | 11 | OTP verification (v1.1) | Later |
@@ -265,11 +265,11 @@ Browser → Vercel (client) → Render (API) → Neon (PostgreSQL)
 ## 18. Known Technical Debt
 
 - File is named `entry.serivce.js` (typo); rename to `entry.service.js` and fix the import.
-- `SELF_ENTRY_NOT_ALLOWED` is thrown by the service but the controller returns 500; map it to 400.
-- `app.js` calls `listen` on import, which blocks testing.
-- Root-level `package.json` contains an unused `fs` package (a placeholder, `fs` is built into Node) and duplicates server dependencies; remove it.
+- `app.js` calls `listen` on import, which blocks testing; split it into `app.js` and `server.js`.
 - Amounts accept whole rupees only.
 - No server-side token revocation.
+- No automated tests yet; the lifecycle was verified with a manual three-account table.
+- Some error messages contain typos that users can see.
 
 ## 19. Open Architecture Questions
 

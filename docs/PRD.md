@@ -1,7 +1,7 @@
 # Klip — Product Requirements Document
 
-**Version:** 0.2
-**Status:** MVP in progress (auth, entry creation and listing are live)
+**Version:** 1.0
+**Status:** v1.0 shipped on 24 Oct 2026 (auth, entries, contacts, confirm, dispute and settle are live)
 **Tagline:** Keep track. Keep it fair.
 
 ## 1. Product Overview
@@ -83,6 +83,8 @@ pending ──confirm──▶ confirmed ──settle──▶ settled
 | `dispute` | Counterparty disagrees; lender must edit or cancel |
 | `settled` | Paid back or favour returned; kept in history |
 
+**v1 behaviour:** a disputed entry is closed by the lender with Settle once they have sorted it out. Editing and cancelling an entry arrive in v1.1.
+
 ## 8. Balance Rules
 
 - **Owed to you** = sum of `amount_paise` on entries you created with status `pending` or `confirmed`. Pending amounts are marked *unconfirmed* in the UI.
@@ -100,15 +102,17 @@ pending ──confirm──▶ confirmed ──settle──▶ settled
 | Entries | Create money/favour entry | Done |
 | Entries | List my entries (as lender or counterparty) | Done |
 | Entries | Auto-link entries when a counterparty registers | Done |
-| Contacts | Private name per counterparty phone | To do |
-| Entries | Counterparty confirm / dispute | To do |
-| Entries | Lender settles an entry | To do |
-| Entries | Lender edits or cancels while pending/disputed | To do |
-| Dashboard | Totals computed by the API | To do |
-| Dashboard | Remove all sample data, use real date | To do |
-| Invite | "Invite on WhatsApp" link with prefilled message | To do |
-| History | Filter by status and type | To do |
-| Quality | Authorization tests (user A cannot read user B's entries) | To do |
+| Contacts | Private name per counterparty phone | Done |
+| Entries | Counterparty confirm / dispute | Done |
+| Entries | Lender settles an entry (also closes a disputed one) | Done |
+| Entries | Lender edits or cancels while pending/disputed | v1.1 |
+| Dashboard | Totals shown in the app | Done (added up in the client from the latest 100 entries) |
+| Dashboard | Totals computed by the API | v1.1 |
+| Dashboard | Remove all sample data, use real date | Done |
+| Invite | "Invite on WhatsApp" link with prefilled message | v1.1 |
+| History | Filter by who gave (everything, I gave, asked of me) | Done |
+| History | Filter by status | v1.1 |
+| Quality | Authorization checks (user C cannot act on A and B's entry) | Verified manually; automated tests in v1.1 |
 | Deploy | Client on Vercel, API on Render, DB on Neon | Done |
 | Docs | README with live link and screenshots | To do |
 
@@ -152,8 +156,8 @@ pending ──confirm──▶ confirmed ──settle──▶ settled
 
 ## 14. Roadmap
 
-- **v1.0 (MVP):** everything in section 9.
-- **v1.1:** OTP verification at registration, password reset via OTP.
+- **v1.0 (MVP):** everything marked Done in section 9. Shipped 24 Oct 2026.
+- **v1.1:** dashboard endpoint, edit and cancel, WhatsApp invite link, status filter, automated tests, OTP verification at registration and password reset via OTP.
 - **v1.2:** reminders, favour categories, partial settlement.
 - **v2:** mobile app (contact picker, push notifications), photo attachments.
 
@@ -170,7 +174,7 @@ A user can:
 
 ## 16. MVP Completion Definition
 
-All "To do" rows in section 9 are done, authorization tests pass, no secrets are in the repository or its history, and the live deployment works end to end.
+Every row marked Done in section 9 works on the live deployment, the three-account authorization table passes, and no secrets are in the repository or its history. v1.0 meets this; only the README screenshots remain.
 
 ## 17. Open Questions
 
