@@ -34,7 +34,7 @@ const createEntryService = async ({
 
         await client.query("BEGIN");
         if (cleanName) {
-            await pool.query('INSERT INTO contacts (owner_id, phone, name) VALUES ($1,$2,$3) ON CONFLICT(owner_id,phone) DO UPDATE SET name = EXCLUDED.name', [creatorId, normalizedPhone, cleanName])
+            await client.query('INSERT INTO contacts (owner_id, phone, name) VALUES ($1,$2,$3) ON CONFLICT(owner_id,phone) DO UPDATE SET name = EXCLUDED.name', [creatorId, normalizedPhone, cleanName])
         }
 
         const entryResult = await client.query(
@@ -127,7 +127,7 @@ const transitionEntry = async (entryId, actorId, action) => {
             throw error
         }
 
-        const updatedResult = await client.query(`UPDATE entries SET status = $2, updated_at = now(), settled_at = CASE WHEN $3 THEN now() END WHERE id = $1 RETURNING  *`, [entryId, rule.to = "settled"])
+        const updatedResult = await client.query(`UPDATE entries SET status = $2, updated_at = now(), settled_at = CASE WHEN $3 THEN now() END WHERE id = $1 RETURNING  *`, [entryId, rule.to, rule.to === "settled"])
         const updatedEntry = updatedResult.rows[0];
 
         const eventAction = action === "dispute" ? "disputed" : rule.to

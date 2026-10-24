@@ -51,8 +51,7 @@ CREATE TABLE entry_events (
     id BIGSERIAL PRIMARY KEY,
     entry_id UUID NOT NULL REFERENCES entries(id),
     actor_id UUID NOT NULL REFERENCES users(id),
-    action TEXT NOT NULL
-        CHECK (action IN('confirmed','disputed','settled')),
+    action TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

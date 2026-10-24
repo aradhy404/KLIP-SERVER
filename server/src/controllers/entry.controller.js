@@ -56,8 +56,11 @@ const createEntry = async (req, res) => {
         })
         res.status(201).json(entry)
     } catch (err) {
+        if (err.message === "SELF_ENTRY_NOT_ALLOWED") {
+            return res.status(400).json({ error: "you cannot create an entry with yourself" })
+        }
         console.error(err)
-        res.status(400).json({ error: "failed to create the entry of the user" })
+        res.status(500).json({ error: "failed to create the entry" })
     }
 
 }
@@ -94,8 +97,8 @@ const transition = (action) => async (req, res) => {
         if (status) {
             return res.status(status).json({ error: err.message })
         }
-        console.log(err)
-        res.status(400).json({ error: "invalid entry" })
+        console.error(err)
+        res.status(500).json({ error: "failed to update the entry" })
     }
 }
 
@@ -103,4 +106,4 @@ const confirmentry = transition("confirm")
 const despuiteentry = transition("dispute")
 const settleentry = transition("settle")
 
-export { createEntry, listEntries,confirmentry,despuiteentry,settleentry }
+export { createEntry, listEntries, confirmentry, despuiteentry, settleentry }

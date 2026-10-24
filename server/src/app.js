@@ -7,7 +7,7 @@ import entryRoutes from "./routes/entry.routes.js"
 
 const app = express()
 
-app.set("trust proxy",1)
+
 const allowedOrigins = [
     process.env.CLIENT_URL?.trim().replace(/\/+$/, ""),
     "https://klip-client.vercel.app",
